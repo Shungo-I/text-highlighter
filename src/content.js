@@ -328,6 +328,13 @@ const applyHighlight = (color) => {
         // 既存のハイライトを確認し、重複している場合は削除
         removeOverlappingHighlights(selectedRange);
         
+        // 改行を含むかチェック
+        const selectedTextContent = selectedRange.toString();
+        if (selectedTextContent.includes('\n') || selectedTextContent.includes('\r')) {
+            console.log('選択範囲に改行が含まれているため、テキストノード単位でハイライトを適用します');
+            return applyHighlightToTextNodes(selectedRange, color);
+        }
+        
         // ハイライト要素を作成
         const highlightSpan = document.createElement('span');
         highlightSpan.className = 'text-highlighter-highlight';
@@ -353,30 +360,143 @@ const applyHighlight = (color) => {
             
             return true;
         } catch (error) {
-            // 複雑な選択範囲の場合の代替処理
-            console.log('範囲が複雑なため、extractContents方式を使用します');
-            
-            const contents = selectedRange.extractContents();
-            highlightSpan.appendChild(contents);
-            selectedRange.insertNode(highlightSpan);
-            
-            // ハイライト情報を保存
-            const parentElement = highlightSpan.parentElement;
-            if (parentElement) {
-                addHighlightInfo(parentElement, selectedText, color, highlightSpan.getAttribute('data-highlight-id'));
-            }
-            
-            // 選択を解除
-            window.getSelection().removeAllRanges();
-            selectedRange = null;
-            selectedText = '';
-            
-            return true;
+            // 複雑な選択範囲の場合はテキストノード単位で処理
+            console.log('範囲が複雑なため、テキストノード単位でハイライトを適用します');
+            return applyHighlightToTextNodes(selectedRange, color);
         }
     } catch (error) {
         console.error('ハイライト適用エラー:', error);
         return false;
     }
+};
+
+/**
+ * テキストノード単位でハイライトを適用する（改行を避けるため）
+ * @param {Range} range - ハイライトを適用する範囲
+ * @param {string} color - ハイライトの色
+ * @returns {boolean} ハイライト適用が成功した場合はtrue
+ */
+const applyHighlightToTextNodes = (range, color) => {
+    try {
+        // 範囲内のテキストノードを取得
+        const textNodes = getTextNodesInRange(range);
+        const highlightId = generateHighlightId();
+        let highlightApplied = false;
+        
+        textNodes.forEach((nodeInfo, index) => {
+            const { node, startOffset, endOffset } = nodeInfo;
+            
+            // 改行文字のみの場合はスキップ
+            const nodeText = node.textContent.substring(startOffset, endOffset);
+            if (!nodeText.trim() || nodeText === '\n' || nodeText === '\r' || nodeText === '\r\n') {
+                return;
+            }
+            
+            // ハイライト用の範囲を作成
+            const nodeRange = document.createRange();
+            nodeRange.setStart(node, startOffset);
+            nodeRange.setEnd(node, endOffset);
+            
+            // ハイライト要素を作成
+            const highlightSpan = document.createElement('span');
+            highlightSpan.className = 'text-highlighter-highlight';
+            highlightSpan.style.backgroundColor = color;
+            highlightSpan.setAttribute('data-highlight-color', color);
+            highlightSpan.setAttribute('data-highlight-id', highlightId);
+            
+            try {
+                nodeRange.surroundContents(highlightSpan);
+                
+                // ハイライト情報を保存（最初のハイライトのみ）
+                if (!highlightApplied) {
+                    const parentElement = highlightSpan.parentElement;
+                    if (parentElement) {
+                        addHighlightInfo(parentElement, nodeText, color, highlightId);
+                    }
+                    highlightApplied = true;
+                }
+            } catch (error) {
+                console.error('テキストノードハイライト適用エラー:', error);
+            }
+        });
+        
+        // 選択を解除
+        window.getSelection().removeAllRanges();
+        selectedRange = null;
+        selectedText = '';
+        
+        return highlightApplied;
+    } catch (error) {
+        console.error('テキストノード単位ハイライト適用エラー:', error);
+        return false;
+    }
+};
+
+/**
+ * 指定された範囲内のテキストノードとその範囲情報を取得する
+ * @param {Range} range - 検索範囲
+ * @returns {Array} テキストノード情報の配列
+ */
+const getTextNodesInRange = (range) => {
+    const textNodes = [];
+    const walker = document.createTreeWalker(
+        range.commonAncestorContainer,
+        NodeFilter.SHOW_TEXT,
+        {
+            acceptNode: function(node) {
+                // 範囲内にあるテキストノードのみを受け入れ
+                const nodeRange = document.createRange();
+                nodeRange.selectNodeContents(node);
+                return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }
+        },
+        false
+    );
+    
+    let node;
+    while (node = walker.nextNode()) {
+        // ノード内での開始・終了位置を計算
+        let startOffset = 0;
+        let endOffset = node.textContent.length;
+        
+        // より正確な範囲計算
+        try {
+            if (range.startContainer === node) {
+                startOffset = range.startOffset;
+            } else if (range.comparePoint && range.comparePoint(node, 0) <= 0) {
+                startOffset = 0;
+            } else if (range.startContainer.contains && range.startContainer.contains(node)) {
+                startOffset = 0;
+            }
+            
+            if (range.endContainer === node) {
+                endOffset = range.endOffset;
+            } else if (range.comparePoint && range.comparePoint(node, node.textContent.length) >= 0) {
+                endOffset = node.textContent.length;
+            } else if (range.endContainer.contains && range.endContainer.contains(node)) {
+                endOffset = node.textContent.length;
+            }
+        } catch (error) {
+            // フォールバック処理
+            if (range.startContainer === node) {
+                startOffset = range.startOffset;
+            }
+            if (range.endContainer === node) {
+                endOffset = range.endOffset;
+            }
+        }
+        
+        // 有効な範囲がある場合のみ追加
+        if (startOffset < endOffset) {
+            textNodes.push({
+                node: node,
+                startOffset: startOffset,
+                endOffset: endOffset
+            });
+        }
+    }
+    
+    return textNodes;
 };
 
 /**
