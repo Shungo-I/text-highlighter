@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Highlighter</title>
+    <style>
+        body {
+            width: 320px;
+            padding: 16px;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+
+
+        .color-palette {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .palette-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .color-button {
+            width: 60px;
+            height: 40px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .color-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .color-button:active {
+            transform: scale(0.98);
+        }
+
+        .color-button.selected {
+            border: 3px solid #27ae60;
+            box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.2);
+        }
+
+
+        /* デフォルト色 */
+        .color-red { background-color: #ffcccb; }
+        .color-blue { background-color: #add8e6; }
+        .color-yellow { background-color: #ffff00; }
+        .color-green { background-color: #90ee90; }
+        .color-cyan { background-color: #e0ffff; }
+        .color-purple { background-color: #dda0dd; }
+        .color-lime { background-color: #f0fff0; }
+        .color-pink { background-color: #ffc0cb; }
+
+        .custom-colors {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .custom-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .add-custom-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .add-custom-btn:hover {
+            background: #2980b9;
+        }
+
+        .custom-color-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .status-message {
+            text-align: center;
+            font-size: 12px;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .empty-custom {
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+            font-size: 12px;
+            grid-column: 1 / -1;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 Text Highlighter</h1>
+    </div>
+
+
+    <div class="color-palette">
+        <div class="palette-title">デフォルト色</div>
+        <div class="color-grid">
+            <button class="color-button color-red" data-color="#ffcccb" title="赤">赤</button>
+            <button class="color-button color-blue" data-color="#add8e6" title="青">青</button>
+            <button class="color-button color-yellow" data-color="#ffff00" title="黄</button>
+            <button class="color-button color-green" data-color="#90ee90" title="緑">緑</button>
+            <button class="color-button color-cyan" data-color="#e0ffff" title="水色">水色</button>
+            <button class="color-button color-purple" data-color="#dda0dd" title="紫">紫</button>
+            <button class="color-button color-lime" data-color="#f0fff0" title="黄緑">黄緑</button>
+            <button class="color-button color-pink" data-color="#ffc0cb" title="桃">桃</button>
+        </div>
+    </div>
+
+    <div class="custom-colors">
+        <div class="custom-title">
+            カスタム色
+            <button class="add-custom-btn" id="addCustomBtn">+ 追加</button>
+        </div>
+        <div class="custom-color-list" id="customColorList">
+            <div class="empty-custom">
+                カスタム色はまだ設定されていません
+            </div>
+        </div>
+    </div>
+
+    <div class="status-message" id="statusMessage"></div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

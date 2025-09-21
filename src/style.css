@@ -1,0 +1,80 @@
+/* Text Highlighter Styles */
+
+/* 基本ハイライトスタイル */
+.text-highlighter-highlight {
+    padding: 1px 2px;
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+/* ハイライトのホバー効果 */
+.text-highlighter-highlight:hover {
+    opacity: 0.8;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* デフォルト色定義 */
+.highlight-red {
+    background-color: #ffcccb !important;
+}
+
+.highlight-blue {
+    background-color: #add8e6 !important;
+}
+
+.highlight-yellow {
+    background-color: #ffffe0 !important;
+}
+
+.highlight-green {
+    background-color: #90ee90 !important;
+}
+
+.highlight-cyan {
+    background-color: #e0ffff !important;
+}
+
+.highlight-purple {
+    background-color: #dda0dd !important;
+}
+
+.highlight-lime {
+    background-color: #f0fff0 !important;
+}
+
+.highlight-pink {
+    background-color: #ffc0cb !important;
+}
+
+/* 選択状態の視覚的フィードバック */
+.text-highlighter-selecting {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+/* アニメーション効果 */
+@keyframes highlightApplied {
+    0% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.text-highlighter-highlight.newly-applied {
+    animation: highlightApplied 0.5s ease-out;
+}
+
+/* 削除対象のハイライト表示 */
+.text-highlighter-highlight.deletion-target {
+    outline: 2px dashed #ff0000;
+    outline-offset: 1px;
+}
