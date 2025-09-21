@@ -5,6 +5,10 @@ console.log('Text Highlighter バックグラウンドスクリプトが読み�
 let keepAliveInterval;
 let isServiceWorkerActive = true;
 
+/**
+ * Service Workerの keep alive 機能を開始する
+ * 定期的にチェックしてService Workerの状態を維持する
+ */
 const startKeepAlive = () => {
     console.log('Keep alive機能を開始します');
     
@@ -34,6 +38,9 @@ const startKeepAlive = () => {
     }, 10000); // 10秒ごと
 };
 
+/**
+ * keep alive 機能を停止する
+ */
 const stopKeepAlive = () => {
     if (keepAliveInterval) {
         clearInterval(keepAliveInterval);
@@ -42,7 +49,9 @@ const stopKeepAlive = () => {
     }
 };
 
-// Service Worker状態監視
+/**
+ * Service Workerの状態を監視し、ライフサイクルイベントに対応する
+ */
 const monitorServiceWorkerHealth = () => {
     // アイドル状態の検出と対応
     if (chrome.idle && chrome.idle.onStateChanged) {
@@ -85,7 +94,9 @@ chrome.runtime.onInstalled.addListener((details) => {
     createContextMenus();
 });
 
-// 右クリックメニューの作成
+/**
+ * 拡張機能の右クリックコンテキストメニューを作成する
+ */
 const createContextMenus = () => {
     // 既存のメニューをクリア
     chrome.contextMenus.removeAll(() => {
@@ -186,7 +197,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-// 強化されたストレージ保存処理
+/**
+ * ストレージへのデータ保存を処理する
+ * @param {Object} request - リクエストオブジェクト（keyとdataを含む）
+ * @param {Function} sendResponse - レスポンスを送信する関数
+ * @returns {Promise<void>}
+ */
 const handleSaveToStorage = async (request, sendResponse) => {
     const startTime = Date.now();
     
@@ -233,7 +249,12 @@ const handleSaveToStorage = async (request, sendResponse) => {
     }
 };
 
-// 強化されたストレージ読み込み処理
+/**
+ * ストレージからのデータ読み込みを処理する
+ * @param {Object} request - リクエストオブジェクト（keyを含む）
+ * @param {Function} sendResponse - レスポンスを送信する関数
+ * @returns {Promise<void>}
+ */
 const handleLoadFromStorage = async (request, sendResponse) => {
     const startTime = Date.now();
     
@@ -280,7 +301,10 @@ const handleLoadFromStorage = async (request, sendResponse) => {
     }
 };
 
-// 現在のハイライト色をストレージから取得
+/**
+ * 現在設定されているハイライト色をストレージから取得する
+ * @returns {Promise<string>} ハイライト色（16進数カラーコード）
+ */
 const getCurrentHighlightColorFromStorage = async () => {
     try {
         const result = await chrome.storage.sync.get(['current_highlight_color']);

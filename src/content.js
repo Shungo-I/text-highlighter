@@ -7,7 +7,10 @@ let highlightData = [];
 // 拡張機能の状態チェック
 let extensionValid = true;
 
-// 拡張機能コンテキストの有効性をチェック
+/**
+ * 拡張機能のコンテキストが有効かどうかをチェックする
+ * @returns {boolean} 拡張機能のコンテキストが有効な場合はtrue、無効な場合はfalse
+ */
 const checkExtensionContext = () => {
     try {
         // chromeオブジェクトが存在するかチェック
@@ -60,7 +63,11 @@ let contextMenuSelection = {
 // デフォルトのハイライト色
 const DEFAULT_HIGHLIGHT_COLOR = '#ffff00'; // 黄色
 
-// デバッグ用: 包括的ストレージテスト関数
+/**
+ * デバッグ用の包括的ストレージテスト関数
+ * 新しい保存・読み込み機能をテストし、結果をコンソールに出力する
+ * @returns {Promise<{saveResults: Array<string>, loadResults: any}>} テスト結果
+ */
 window.testStorage = async () => {
     console.log('🚀 === 包括的ストレージテスト開始 ===');
     
@@ -98,7 +105,10 @@ window.testStorage = async () => {
     return { saveResults, loadResults };
 };
 
-// Service Workerの状態を確認する関数
+/**
+ * Service Workerの状態を確認する
+ * @returns {Promise<boolean>} Service Workerがアクティブな場合はtrue
+ */
 const checkServiceWorkerStatus = async () => {
     try {
         // 簡単なpingメッセージを送信してService Workerの状態を確認
@@ -110,7 +120,13 @@ const checkServiceWorkerStatus = async () => {
     }
 };
 
-// Service Workerとの安全なメッセージ通信関数
+/**
+ * Service Workerとの安全なメッセージ通信を行う
+ * 拡張機能のコンテキストが無効な場合やService Workerが非アクティブな場合に適切に処理する
+ * @param {Object} message - 送信するメッセージオブジェクト
+ * @param {number} [maxRetries=3] - 最大リトライ回数
+ * @returns {Promise<Object|null>} Service Workerからの応答、失敗時はnull
+ */
 const sendMessageSafely = async (message, maxRetries = 3) => {
     // 拡張機能のコンテキストが有効かチェック
     if (!checkExtensionContext()) {
@@ -189,6 +205,10 @@ document.addEventListener('keyup', (event) => {
     handleTextSelection();
 });
 
+/**
+ * テキスト選択のハンドリングを行う
+ * 選択されたテキストと範囲を保存し、Service Workerに通知する
+ */
 const handleTextSelection = () => {
     // 拡張機能のコンテキストが無効な場合は何もしない
     if (!extensionValid) {
@@ -220,7 +240,12 @@ const handleTextSelection = () => {
     }
 };
 
-// 指定されたテキストでハイライトを適用する関数
+/**
+ * 指定されたテキストでハイライトを適用する
+ * @param {string} text - ハイライトを適用するテキスト
+ * @param {string} color - ハイライトの色
+ * @returns {boolean} ハイライト適用が成功した場合はtrue
+ */
 const applyHighlightToText = (text, color) => {
     try {
         console.log('コンテキストメニューからのハイライト適用:', text, color);
@@ -253,7 +278,11 @@ const applyHighlightToText = (text, color) => {
     }
 };
 
-// ページ内でテキストを検索して範囲を取得
+/**
+ * ページ内で指定されたテキストを検索して範囲を取得する
+ * @param {string} searchText - 検索するテキスト
+ * @returns {Range|null} 見つかった場合はRange オブジェクト、見つからない場合はnull
+ */
 const findTextInPage = (searchText) => {
     try {
         // TreeWalkerを使用してテキストノードを検索
@@ -284,7 +313,11 @@ const findTextInPage = (searchText) => {
     }
 };
 
-// ハイライト適用関数
+/**
+ * 選択されたテキストにハイライトを適用する
+ * @param {string} color - ハイライトの色（16進数カラーコード）
+ * @returns {boolean} ハイライト適用が成功した場合はtrue
+ */
 const applyHighlight = (color) => {
     if (!selectedRange) {
         console.log('選択されたテキストがありません');
@@ -346,7 +379,10 @@ const applyHighlight = (color) => {
     }
 };
 
-// 重複するハイライトを削除
+/**
+ * 指定された範囲と重複するハイライトを削除する
+ * @param {Range} range - チェックする範囲
+ */
 const removeOverlappingHighlights = (range) => {
     const highlights = document.querySelectorAll('.text-highlighter-highlight');
     
@@ -364,14 +400,23 @@ const removeOverlappingHighlights = (range) => {
     });
 };
 
-// 要素から範囲を取得
+/**
+ * 要素から範囲を取得する
+ * @param {Element} element - 範囲を取得する要素
+ * @returns {Range} 要素の内容を選択する範囲
+ */
 const getRangeFromElement = (element) => {
     const range = document.createRange();
     range.selectNodeContents(element);
     return range;
 };
 
-// 範囲の重複をチェック
+/**
+ * 二つの範囲が重複しているかチェックする
+ * @param {Range} range1 - 最初の範囲
+ * @param {Range} range2 - 二番目の範囲
+ * @returns {boolean} 範囲が重複している場合はtrue
+ */
 const rangesOverlap = (range1, range2) => {
     try {
         return range1.compareBoundaryPoints(Range.START_TO_END, range2) > 0 &&
@@ -381,12 +426,19 @@ const rangesOverlap = (range1, range2) => {
     }
 };
 
-// ハイライトIDを生成
+/**
+ * ハイライト用のユニークなIDを生成する
+ * @returns {string} 生成されたハイライトID
+ */
 const generateHighlightId = () => {
     return 'highlight_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 };
 
-// ハイライト削除関数
+/**
+ * 指定されたハイライト要素を削除する
+ * @param {Element} targetElement - 削除するハイライト要素
+ * @returns {boolean} 削除が成功した場合はtrue
+ */
 const removeHighlight = (targetElement) => {
     if (!targetElement || !targetElement.classList.contains('text-highlighter-highlight')) {
         console.log('削除対象のハイライトが見つかりません');
@@ -418,7 +470,11 @@ const removeHighlight = (targetElement) => {
     }
 };
 
-// クリックされた要素がハイライトかチェック
+/**
+ * クリックされた要素またはその親要素がハイライト要素かチェックする
+ * @param {Element} element - チェックする要素
+ * @returns {Element|null} ハイライト要素が見つかった場合はその要素、見つからない場合はnull
+ */
 const findHighlightElement = (element) => {
     // 5レベルまで親要素を辿ってハイライト要素を探す
     let current = element;
@@ -512,16 +568,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // 非同期レスポンスを示す
 });
 
-// データ永続化関数
+/**
+ * 現在のドメインを取得する
+ * @returns {string} 現在のページのホスト名
+ */
 const getCurrentDomain = () => {
     return window.location.hostname;
 };
 
+/**
+ * 現在のドメイン用のストレージキーを取得する
+ * @returns {string} ストレージキー
+ */
 const getStorageKey = () => {
     return `highlights_${currentDomain}`;
 };
 
-// ハイライト情報をXPathで保存
+/**
+ * 要素のXPathを取得する
+ * @param {Element} element - XPathを取得する要素
+ * @returns {string|null} XPath文字列、取得できない場合はnull
+ */
 const getXPath = (element) => {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) {
         return null;
@@ -552,7 +619,11 @@ const getXPath = (element) => {
     return `/${parts.join('/')}`;
 };
 
-// XPathから要素を取得
+/**
+ * XPathから要素を取得する
+ * @param {string} xpath - XPath文字列
+ * @returns {Element|null} 見つかった要素、見つからない場合はnull
+ */
 const getElementByXPath = (xpath) => {
     try {
         const result = document.evaluate(
@@ -569,7 +640,13 @@ const getElementByXPath = (xpath) => {
     }
 };
 
-// 新しい保存関数: 確実に動作するマルチ保存
+/**
+ * 確実にデータを保存するためのマルチ保存関数
+ * localStorage、chrome.storage.local、Service Worker経由の3つの方法でデータを保存する
+ * @param {Object} data - 保存するデータ
+ * @param {string} key - ストレージキー
+ * @returns {Promise<Array<string>>} 各保存方法の結果の配列
+ */
 const saveHighlightDataReliable = async (data, key) => {
     const saveResults = [];
     
@@ -642,7 +719,10 @@ const saveHighlightDataReliable = async (data, key) => {
     return saveResults;
 };
 
-// ハイライト情報を保存
+/**
+ * 現在のハイライト情報をストレージに保存する
+ * @returns {Promise<void>}
+ */
 const saveHighlightData = async () => {
     try {
         const key = getStorageKey();
@@ -699,7 +779,12 @@ const saveHighlightData = async () => {
     }
 };
 
-// 新しい読み込み関数: 確実にデータを取得
+/**
+ * 確実にデータを読み込むためのマルチ読み込み関数
+ * localStorage、chrome.storage.local、Service Worker経由の3つの方法でデータを読み込む
+ * @param {string} key - ストレージキー
+ * @returns {Promise<Object|null>} 読み込まれたデータ、見つからない場合はnull
+ */
 const loadHighlightDataReliable = async (key) => {
     let loadedData = null;
     const loadResults = [];
@@ -775,7 +860,10 @@ const loadHighlightDataReliable = async (key) => {
     return loadedData;
 };
 
-// ハイライト情報を読み込み
+/**
+ * 現在のドメインのハイライト情報をストレージから読み込む
+ * @returns {Promise<void>}
+ */
 const loadHighlightData = async () => {
     try {
         const key = getStorageKey();
@@ -820,7 +908,9 @@ const loadHighlightData = async () => {
     }
 };
 
-// ハイライトを復元
+/**
+ * 保存されたハイライト情報を元にページ上のハイライトを復元する
+ */
 const restoreHighlights = () => {
     highlightData.forEach(highlightInfo => {
         try {
@@ -866,7 +956,11 @@ const restoreHighlights = () => {
     });
 };
 
-// 要素内のテキストノードを取得
+/**
+ * 要素内のテキストノードを取得する
+ * @param {Element} element - 検索対象の要素
+ * @returns {Array<Text>} テキストノードの配列
+ */
 const getTextNodes = (element) => {
     const textNodes = [];
     const walker = document.createTreeWalker(
@@ -886,7 +980,12 @@ const getTextNodes = (element) => {
     return textNodes;
 };
 
-// 範囲にハイライトを適用（復元用）
+/**
+ * 指定された範囲にハイライトを適用する（復元用）
+ * @param {Range} range - ハイライトを適用する範囲
+ * @param {string} color - ハイライトの色
+ * @param {string} id - ハイライトのID
+ */
 const applyHighlightToRange = (range, color, id) => {
     try {
         const highlightSpan = document.createElement('span');
@@ -902,7 +1001,13 @@ const applyHighlightToRange = (range, color, id) => {
     }
 };
 
-// ハイライト情報を追加
+/**
+ * ハイライト情報を配列に追加し、ストレージに保存する
+ * @param {Element} element - ハイライトが適用された要素の親要素
+ * @param {string} text - ハイライトされたテキスト
+ * @param {string} color - ハイライトの色
+ * @param {string} id - ハイライトのID
+ */
 const addHighlightInfo = (element, text, color, id) => {
     const xpath = getXPath(element);
     if (xpath) {
@@ -925,7 +1030,10 @@ const addHighlightInfo = (element, text, color, id) => {
     }
 };
 
-// ハイライト情報を削除
+/**
+ * 指定されたIDのハイライト情報を配列から削除し、ストレージを更新する
+ * @param {string} id - 削除するハイライトのID
+ */
 const removeHighlightInfo = (id) => {
     const originalLength = highlightData.length;
     highlightData = highlightData.filter(item => item.id !== id);

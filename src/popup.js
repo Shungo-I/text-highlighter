@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', function() {
     initializePopup();
 });
 
+/**
+ * ポップアップの初期化を行う
+ * 現在のタブの取得、カスタム色の読み込み、イベントリスナーの設定などを行う
+ * @returns {Promise<void>}
+ */
 async function initializePopup() {
     try {
         // 現在のタブを取得
@@ -47,6 +52,10 @@ async function initializePopup() {
     }
 }
 
+/**
+ * 現在選択されているテキストの情報をコンテンツスクリプトから取得して更新する
+ * @returns {Promise<void>}
+ */
 async function updateSelectionInfo() {
     try {
         // コンテンツスクリプトから選択情報を取得
@@ -67,6 +76,9 @@ async function updateSelectionInfo() {
 
 // 削除：選択情報表示関数は不要
 
+/**
+ * ポップアップ内の各要素にイベントリスナーを設定する
+ */
 function setupEventListeners() {
     // デフォルト色ボタンのイベントリスナー
     const colorButtons = document.querySelectorAll('.color-button[data-color]');
@@ -90,7 +102,11 @@ function setupEventListeners() {
     
 }
 
-// 色を選択する関数
+/**
+ * ハイライト色を選択し、現在の色として設定する
+ * @param {string} color - 選択する色（16進数カラーコード）
+ * @param {string} colorName - 色の名前
+ */
 function selectColor(color, colorName) {
     currentHighlightColor = color;
     currentColorName = colorName;
@@ -99,7 +115,10 @@ function selectColor(color, colorName) {
 }
 
 
-// 選択された色ボタンのスタイルを更新
+/**
+ * 選択された色ボタンの表示スタイルを更新する
+ * @param {string} selectedColor - 選択された色のカラーコード
+ */
 function updateSelectedColorButton(selectedColor) {
     // 全ての色ボタンからselectedクラスを削除
     document.querySelectorAll('.color-button').forEach(button => {
@@ -113,7 +132,10 @@ function updateSelectedColorButton(selectedColor) {
     }
 }
 
-// 現在の色を保存
+/**
+ * 現在選択されているハイライト色をストレージに保存する
+ * @returns {Promise<void>}
+ */
 async function saveCurrentColor() {
     try {
         await chrome.storage.sync.set({ 
@@ -125,7 +147,10 @@ async function saveCurrentColor() {
     }
 }
 
-// 現在の色を読み込み
+/**
+ * ストレージから現在のハイライト色を読み込む
+ * @returns {Promise<void>}
+ */
 async function loadCurrentColor() {
     try {
         const result = await chrome.storage.sync.get(['current_highlight_color', 'current_color_name']);
@@ -139,6 +164,10 @@ async function loadCurrentColor() {
 }
 
 
+/**
+ * ストレージからカスタム色の一覧を読み込む
+ * @returns {Promise<void>}
+ */
 async function loadCustomColors() {
     try {
         const result = await chrome.storage.sync.get(['custom_colors']);
@@ -152,6 +181,10 @@ async function loadCustomColors() {
     }
 }
 
+/**
+ * カスタム色の表示を更新する
+ * カスタム色ボタンと削除ボタンを作成し、イベントリスナーを設定する
+ */
 function updateCustomColorDisplay() {
     customColorList.innerHTML = '';
     
@@ -217,6 +250,11 @@ function updateCustomColorDisplay() {
     }
 }
 
+/**
+ * ステータスメッセージを表示する
+ * @param {string} message - 表示するメッセージ
+ * @param {string} type - メッセージのタイプ（'success', 'error', など）
+ */
 function showStatus(message, type) {
     statusMessage.textContent = message;
     statusMessage.className = `status-message status-${type}`;
@@ -235,7 +273,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 });
 
-// カスタム色ダイアログを表示
+/**
+ * カスタム色の追加・編集ダイアログを表示する
+ * @param {number|null} [editIndex=null] - 編集する色のインデックス、nullの場合は新規追加
+ */
 function showCustomColorDialog(editIndex = null) {
     const isEdit = editIndex !== null;
     const existingColor = isEdit ? customColors[editIndex] : null;
@@ -355,7 +396,12 @@ function showCustomColorDialog(editIndex = null) {
     }
 }
 
-// カスタム色を追加
+/**
+ * 新しいカスタム色を追加する
+ * @param {string} color - 追加する色（16進数カラーコード）
+ * @param {string} name - 色の名前
+ * @returns {Promise<void>}
+ */
 async function addCustomColor(color, name) {
     try {
         const newColor = {
@@ -374,7 +420,13 @@ async function addCustomColor(color, name) {
     }
 }
 
-// カスタム色を更新
+/**
+ * 既存のカスタム色を更新する
+ * @param {number} index - 更新する色のインデックス
+ * @param {string} color - 新しい色（16進数カラーコード）
+ * @param {string} name - 新しい色の名前
+ * @returns {Promise<void>}
+ */
 async function updateCustomColor(index, color, name) {
     try {
         if (index >= 0 && index < customColors.length) {
@@ -390,7 +442,11 @@ async function updateCustomColor(index, color, name) {
     }
 }
 
-// カスタム色を削除
+/**
+ * 指定されたインデックスのカスタム色を削除する
+ * @param {number} index - 削除する色のインデックス
+ * @returns {Promise<void>}
+ */
 async function removeCustomColor(index) {
     try {
         if (index >= 0 && index < customColors.length) {
@@ -407,7 +463,11 @@ async function removeCustomColor(index) {
 }
 
 
-// カスタム色を保存
+/**
+ * カスタム色の配列をストレージに保存する
+ * @returns {Promise<void>}
+ * @throws {Error} 保存に失敗した場合
+ */
 async function saveCustomColors() {
     try {
         await chrome.storage.sync.set({ custom_colors: customColors });
