@@ -9,7 +9,7 @@ Webページ上で選択したテキストの背景色を変更できるGoogle C
 1. **リポジトリのダウンロード**
    - このリポジトリをクローンまたはダウンロード
    ```bash
-   git clone git@github.com:Shungo-I/text-highlighter.git
+   git clone git@github.com:iririn1998/text-highlighter.git
    ```
 
 2. **Chrome拡張機能の開発者モードを有効化**
