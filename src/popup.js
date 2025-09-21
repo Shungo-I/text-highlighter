@@ -14,7 +14,7 @@ const addCustomBtn = document.getElementById('addCustomBtn');
 const statusMessage = document.getElementById('statusMessage');
 
 // 初期化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     console.log('ポップアップDOM読み込み完了');
     initializePopup();
 });
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
  * 現在のタブの取得、カスタム色の読み込み、イベントリスナーの設定などを行う
  * @returns {Promise<void>}
  */
-async function initializePopup() {
+const initializePopup = async () => {
     try {
         // 現在のタブを取得
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -56,7 +56,7 @@ async function initializePopup() {
  * 現在選択されているテキストの情報をコンテンツスクリプトから取得して更新する
  * @returns {Promise<void>}
  */
-async function updateSelectionInfo() {
+const updateSelectionInfo = async () => {
     try {
         // コンテンツスクリプトから選択情報を取得
         const response = await chrome.tabs.sendMessage(currentTab.id, {
@@ -79,20 +79,20 @@ async function updateSelectionInfo() {
 /**
  * ポップアップ内の各要素にイベントリスナーを設定する
  */
-function setupEventListeners() {
+const setupEventListeners = () => {
     // デフォルト色ボタンのイベントリスナー
     const colorButtons = document.querySelectorAll('.color-button[data-color]');
     colorButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const color = this.getAttribute('data-color');
-            const colorName = this.textContent;
+        button.addEventListener('click', () => {
+            const color = button.getAttribute('data-color');
+            const colorName = button.textContent;
             selectColor(color, colorName);
         });
     });
     
     
     // カスタム色追加ボタン
-    addCustomBtn.addEventListener('click', function() {
+    addCustomBtn.addEventListener('click', () => {
         if (customColors.length >= 8) {
             showStatus('カスタム色は最大8色まで設定できます', 'error');
             return;
@@ -107,7 +107,7 @@ function setupEventListeners() {
  * @param {string} color - 選択する色（16進数カラーコード）
  * @param {string} colorName - 色の名前
  */
-function selectColor(color, colorName) {
+const selectColor = (color, colorName) => {
     currentHighlightColor = color;
     currentColorName = colorName;
     updateSelectedColorButton(color);
@@ -119,7 +119,7 @@ function selectColor(color, colorName) {
  * 選択された色ボタンの表示スタイルを更新する
  * @param {string} selectedColor - 選択された色のカラーコード
  */
-function updateSelectedColorButton(selectedColor) {
+const updateSelectedColorButton = (selectedColor) => {
     // 全ての色ボタンからselectedクラスを削除
     document.querySelectorAll('.color-button').forEach(button => {
         button.classList.remove('selected');
@@ -136,7 +136,7 @@ function updateSelectedColorButton(selectedColor) {
  * 現在選択されているハイライト色をストレージに保存する
  * @returns {Promise<void>}
  */
-async function saveCurrentColor() {
+const saveCurrentColor = async () => {
     try {
         await chrome.storage.sync.set({ 
             current_highlight_color: currentHighlightColor,
@@ -151,7 +151,7 @@ async function saveCurrentColor() {
  * ストレージから現在のハイライト色を読み込む
  * @returns {Promise<void>}
  */
-async function loadCurrentColor() {
+const loadCurrentColor = async () => {
     try {
         const result = await chrome.storage.sync.get(['current_highlight_color', 'current_color_name']);
         if (result.current_highlight_color) {
@@ -168,7 +168,7 @@ async function loadCurrentColor() {
  * ストレージからカスタム色の一覧を読み込む
  * @returns {Promise<void>}
  */
-async function loadCustomColors() {
+const loadCustomColors = async () => {
     try {
         const result = await chrome.storage.sync.get(['custom_colors']);
         customColors = result.custom_colors || [];
@@ -185,7 +185,7 @@ async function loadCustomColors() {
  * カスタム色の表示を更新する
  * カスタム色ボタンと削除ボタンを作成し、イベントリスナーを設定する
  */
-function updateCustomColorDisplay() {
+const updateCustomColorDisplay = () => {
     customColorList.innerHTML = '';
     
     if (customColors.length === 0) {
@@ -233,12 +233,12 @@ function updateCustomColorDisplay() {
             });
             
             // 色選択
-            button.addEventListener('click', function() {
+            button.addEventListener('click', () => {
                 selectColor(colorInfo.color, colorInfo.name);
             });
             
             // カスタム色削除
-            deleteBtn.addEventListener('click', function(e) {
+            deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 removeCustomColor(index);
             });
@@ -255,7 +255,7 @@ function updateCustomColorDisplay() {
  * @param {string} message - 表示するメッセージ
  * @param {string} type - メッセージのタイプ（'success', 'error', など）
  */
-function showStatus(message, type) {
+const showStatus = (message, type) => {
     statusMessage.textContent = message;
     statusMessage.className = `status-message status-${type}`;
     statusMessage.style.display = 'block';
@@ -277,7 +277,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
  * カスタム色の追加・編集ダイアログを表示する
  * @param {number|null} [editIndex=null] - 編集する色のインデックス、nullの場合は新規追加
  */
-function showCustomColorDialog(editIndex = null) {
+const showCustomColorDialog = (editIndex = null) => {
     const isEdit = editIndex !== null;
     const existingColor = isEdit ? customColors[editIndex] : null;
     
@@ -354,7 +354,7 @@ function showCustomColorDialog(editIndex = null) {
     nameInput.focus();
     
     // 保存ボタン
-    saveBtn.addEventListener('click', function() {
+    saveBtn.addEventListener('click', () => {
         const color = colorInput.value;
         const name = nameInput.value.trim();
         
@@ -377,23 +377,24 @@ function showCustomColorDialog(editIndex = null) {
     cancelBtn.addEventListener('click', closeDialog);
     
     // ESCキーでダイアログを閉じる
-    document.addEventListener('keydown', function escHandler(e) {
+    const escHandler = (e) => {
         if (e.key === 'Escape') {
             closeDialog();
             document.removeEventListener('keydown', escHandler);
         }
-    });
+    };
+    document.addEventListener('keydown', escHandler);
     
     // Enterキーで保存
-    nameInput.addEventListener('keydown', function(e) {
+    nameInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             saveBtn.click();
         }
     });
     
-    function closeDialog() {
+    const closeDialog = () => {
         dialog.remove();
-    }
+    };
 }
 
 /**
@@ -402,7 +403,7 @@ function showCustomColorDialog(editIndex = null) {
  * @param {string} name - 色の名前
  * @returns {Promise<void>}
  */
-async function addCustomColor(color, name) {
+const addCustomColor = async (color, name) => {
     try {
         const newColor = {
             color: color,
@@ -427,7 +428,7 @@ async function addCustomColor(color, name) {
  * @param {string} name - 新しい色の名前
  * @returns {Promise<void>}
  */
-async function updateCustomColor(index, color, name) {
+const updateCustomColor = async (index, color, name) => {
     try {
         if (index >= 0 && index < customColors.length) {
             customColors[index].color = color;
@@ -447,7 +448,7 @@ async function updateCustomColor(index, color, name) {
  * @param {number} index - 削除する色のインデックス
  * @returns {Promise<void>}
  */
-async function removeCustomColor(index) {
+const removeCustomColor = async (index) => {
     try {
         if (index >= 0 && index < customColors.length) {
             const removedColor = customColors[index];
@@ -468,7 +469,7 @@ async function removeCustomColor(index) {
  * @returns {Promise<void>}
  * @throws {Error} 保存に失敗した場合
  */
-async function saveCustomColors() {
+const saveCustomColors = async () => {
     try {
         await chrome.storage.sync.set({ custom_colors: customColors });
         console.log('カスタム色を保存しました:', customColors);
