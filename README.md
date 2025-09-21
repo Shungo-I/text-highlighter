@@ -1,4 +1,4 @@
-# Text Highlighter - テキストハイライト Google拡張機能
+# Text Highlighter - Google拡張機能
 
 ## 概要
 Webページ上で選択したテキストの背景色を変更できるGoogle Chrome拡張機能です。
