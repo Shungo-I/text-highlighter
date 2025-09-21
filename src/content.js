@@ -8,10 +8,16 @@ let highlightData = [];
 let extensionValid = true;
 
 // 拡張機能コンテキストの有効性をチェック
-function checkExtensionContext() {
+const checkExtensionContext = () => {
     try {
         // chromeオブジェクトが存在するかチェック
         if (!chrome || !chrome.runtime) {
+            extensionValid = false;
+            return false;
+        }
+        
+        // chrome.storage が利用可能かチェック
+        if (!chrome.storage || !chrome.storage.local) {
             extensionValid = false;
             return false;
         }
@@ -42,7 +48,7 @@ function checkExtensionContext() {
         console.log('拡張機能コンテキストが無効です:', error.message);
         return false;
     }
-}
+};
 
 // コンテキストメニュー用の選択情報保存
 let contextMenuSelection = {
@@ -54,24 +60,86 @@ let contextMenuSelection = {
 // デフォルトのハイライト色
 const DEFAULT_HIGHLIGHT_COLOR = '#ffff00'; // 黄色
 
+// デバッグ用: 包括的ストレージテスト関数
+window.testStorage = async () => {
+    console.log('🚀 === 包括的ストレージテスト開始 ===');
+    
+    const testKey = 'test_connection_' + Date.now();
+    const testData = { test: true, timestamp: Date.now(), version: '2.0' };
+    
+    // 新しい確実な保存機能をテスト
+    console.log('📝 新しい保存機能をテスト中...');
+    const saveResults = await saveHighlightDataReliable(testData, testKey);
+    
+    // 少し待ってから読み込みテスト
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log('📖 新しい読み込み機能をテスト中...');
+    const loadResults = await loadHighlightDataReliable(testKey);
+    
+    if (loadResults) {
+        console.log('✅ テストデータ読み込み成功:', loadResults);
+    } else {
+        console.log('❌ テストデータ読み込み失敗');
+    }
+    
+    // クリーンアップ
+    try {
+        if (chrome?.storage?.local) {
+            await chrome.storage.local.remove([testKey]);
+        }
+        localStorage.removeItem(testKey);
+        console.log('🧹 テストデータをクリーンアップしました');
+    } catch (error) {
+        console.log('🧹 クリーンアップエラー:', error);
+    }
+    
+    console.log('🎯 === ストレージテスト完了 ===');
+    return { saveResults, loadResults };
+};
+
+// Service Workerの状態を確認する関数
+const checkServiceWorkerStatus = async () => {
+    try {
+        // 簡単なpingメッセージを送信してService Workerの状態を確認
+        const response = await chrome.runtime.sendMessage({ action: 'ping' });
+        return response && response.success;
+    } catch (error) {
+        console.log('Service Worker状態確認失敗:', error.message);
+        return false;
+    }
+};
+
 // Service Workerとの安全なメッセージ通信関数
-async function sendMessageSafely(message, maxRetries = 2) {
+const sendMessageSafely = async (message, maxRetries = 3) => {
     // 拡張機能のコンテキストが有効かチェック
     if (!checkExtensionContext()) {
         console.log('拡張機能のコンテキストが無効なため、メッセージ送信をスキップします');
         return null;
     }
 
+    // Service Workerの状態を事前確認
+    const isServiceWorkerActive = await checkServiceWorkerStatus();
+    if (!isServiceWorkerActive) {
+        console.log('Service Workerが非アクティブです。起動を待機中...');
+        // Service Workerの起動を待つ
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
     let retryCount = 0;
     
     while (retryCount <= maxRetries) {
         try {
-            // Service Workerが起動するまで少し待つ
+            // Service Workerが起動するまで待機時間を増やす
             if (retryCount > 0) {
-                await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
+                const waitTime = Math.min(200 * Math.pow(2, retryCount - 1), 2000); // 指数バックオフ（最大2秒）
+                console.log(`Service Worker起動待機中... (${waitTime}ms)`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
             }
             
+            console.log(`メッセージを送信中 (試行 ${retryCount + 1}/${maxRetries + 1}):`, message.action);
             const response = await chrome.runtime.sendMessage(message);
+            console.log('メッセージ送信成功:', { action: message.action, response });
             return response;
         } catch (error) {
             retryCount++;
@@ -82,7 +150,10 @@ async function sendMessageSafely(message, maxRetries = 2) {
                 error.message.includes('receiving end does not exist') ||
                 error.message.includes('Receiving end does not exist')) {
                 
-                console.log(`メッセージ送信試行 ${retryCount}/${maxRetries + 1} 失敗:`, error.message);
+                console.log(`メッセージ送信試行 ${retryCount}/${maxRetries + 1} 失敗:`, {
+                    error: error.message,
+                    action: message.action
+                });
                 
                 // 最後の試行でも失敗した場合
                 if (retryCount > maxRetries) {
@@ -95,26 +166,30 @@ async function sendMessageSafely(message, maxRetries = 2) {
             }
             
             // その他のエラーの場合は即座に失敗
-            console.error('予期しないメッセージ送信エラー:', error);
+            console.error('予期しないメッセージ送信エラー:', {
+                error: error.message,
+                action: message.action,
+                stack: error.stack
+            });
             return null;
         }
     }
     
     return null;
-}
+};
 
 
 // テキスト選択を監視
-document.addEventListener('mouseup', function(event) {
+document.addEventListener('mouseup', (event) => {
     handleTextSelection();
 });
 
-document.addEventListener('keyup', function(event) {
+document.addEventListener('keyup', (event) => {
     // キーボードでの選択も監視
     handleTextSelection();
 });
 
-function handleTextSelection() {
+const handleTextSelection = () => {
     // 拡張機能のコンテキストが無効な場合は何もしない
     if (!extensionValid) {
         return;
@@ -143,10 +218,10 @@ function handleTextSelection() {
             action: 'textDeselected'
         });
     }
-}
+};
 
 // 指定されたテキストでハイライトを適用する関数
-function applyHighlightToText(text, color) {
+const applyHighlightToText = (text, color) => {
     try {
         console.log('コンテキストメニューからのハイライト適用:', text, color);
         
@@ -176,10 +251,10 @@ function applyHighlightToText(text, color) {
         console.error('コンテキストハイライト適用エラー:', error);
         return false;
     }
-}
+};
 
 // ページ内でテキストを検索して範囲を取得
-function findTextInPage(searchText) {
+const findTextInPage = (searchText) => {
     try {
         // TreeWalkerを使用してテキストノードを検索
         const walker = document.createTreeWalker(
@@ -207,10 +282,10 @@ function findTextInPage(searchText) {
         console.error('テキスト検索エラー:', error);
         return null;
     }
-}
+};
 
 // ハイライト適用関数
-function applyHighlight(color) {
+const applyHighlight = (color) => {
     if (!selectedRange) {
         console.log('選択されたテキストがありません');
         return false;
@@ -269,10 +344,10 @@ function applyHighlight(color) {
         console.error('ハイライト適用エラー:', error);
         return false;
     }
-}
+};
 
 // 重複するハイライトを削除
-function removeOverlappingHighlights(range) {
+const removeOverlappingHighlights = (range) => {
     const highlights = document.querySelectorAll('.text-highlighter-highlight');
     
     highlights.forEach(highlight => {
@@ -287,32 +362,32 @@ function removeOverlappingHighlights(range) {
             parent.normalize();
         }
     });
-}
+};
 
 // 要素から範囲を取得
-function getRangeFromElement(element) {
+const getRangeFromElement = (element) => {
     const range = document.createRange();
     range.selectNodeContents(element);
     return range;
-}
+};
 
 // 範囲の重複をチェック
-function rangesOverlap(range1, range2) {
+const rangesOverlap = (range1, range2) => {
     try {
         return range1.compareBoundaryPoints(Range.START_TO_END, range2) > 0 &&
                range2.compareBoundaryPoints(Range.START_TO_END, range1) > 0;
     } catch (error) {
         return false;
     }
-}
+};
 
 // ハイライトIDを生成
-function generateHighlightId() {
+const generateHighlightId = () => {
     return 'highlight_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
+};
 
 // ハイライト削除関数
-function removeHighlight(targetElement) {
+const removeHighlight = (targetElement) => {
     if (!targetElement || !targetElement.classList.contains('text-highlighter-highlight')) {
         console.log('削除対象のハイライトが見つかりません');
         return false;
@@ -341,10 +416,10 @@ function removeHighlight(targetElement) {
         console.error('ハイライト削除エラー:', error);
         return false;
     }
-}
+};
 
 // クリックされた要素がハイライトかチェック
-function findHighlightElement(element) {
+const findHighlightElement = (element) => {
     // 5レベルまで親要素を辿ってハイライト要素を探す
     let current = element;
     let depth = 0;
@@ -358,10 +433,10 @@ function findHighlightElement(element) {
     }
     
     return null;
-}
+};
 
 // 右クリック時の処理
-document.addEventListener('contextmenu', function(event) {
+document.addEventListener('contextmenu', (event) => {
     // 現在の選択情報をコンテキストメニュー用に保存
     const selection = window.getSelection();
     if (selection.rangeCount > 0 && !selection.isCollapsed) {
@@ -388,7 +463,7 @@ document.addEventListener('contextmenu', function(event) {
 });
 
 // ポップアップからのメッセージを受信
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'applyHighlight') {
         if (!selectedText) {
             // テキストが選択されていない場合は失敗として返す
@@ -496,16 +571,16 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 });
 
 // データ永続化関数
-function getCurrentDomain() {
+const getCurrentDomain = () => {
     return window.location.hostname;
-}
+};
 
-function getStorageKey() {
+const getStorageKey = () => {
     return `highlights_${currentDomain}`;
-}
+};
 
 // ハイライト情報をXPathで保存
-function getXPath(element) {
+const getXPath = (element) => {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) {
         return null;
     }
@@ -533,10 +608,10 @@ function getXPath(element) {
     }
     
     return `/${parts.join('/')}`;
-}
+};
 
 // XPathから要素を取得
-function getElementByXPath(xpath) {
+const getElementByXPath = (xpath) => {
     try {
         const result = document.evaluate(
             xpath,
@@ -550,12 +625,92 @@ function getElementByXPath(xpath) {
         console.error('XPath評価エラー:', error);
         return null;
     }
-}
+};
+
+// 新しい保存関数: 確実に動作するマルチ保存
+const saveHighlightDataReliable = async (data, key) => {
+    const saveResults = [];
+    
+    // 方法1: localStorage（最優先 - コンテキスト無効化の影響を受けない）
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        saveResults.push('localStorage: 成功');
+        console.log('✅ localStorage保存成功（最優先）');
+    } catch (error) {
+        saveResults.push(`localStorage: 失敗 - ${error.message}`);
+        console.error('❌ localStorage保存失敗:', error);
+    }
+    
+    // 方法2: chrome.storage.local 直接アクセス（コンテキスト確認付き）
+    try {
+        // 拡張機能のコンテキストが有効かチェック（chrome.storageの存在も確認）
+        if (chrome?.runtime?.id && chrome?.storage?.local && checkExtensionContext()) {
+            await chrome.storage.local.set({ [key]: data });
+            saveResults.push('chrome.storage.local: 成功');
+            console.log('✅ chrome.storage.local保存成功');
+        } else {
+            const reason = !chrome ? 'chromeオブジェクトなし' : 
+                          !chrome.runtime ? 'chrome.runtimeなし' :
+                          !chrome.runtime.id ? 'chrome.runtime.idなし' :
+                          !chrome.storage ? 'chrome.storageなし' :
+                          !chrome.storage.local ? 'chrome.storage.localなし' :
+                          'checkExtensionContext失敗';
+            saveResults.push(`chrome.storage.local: コンテキスト無効 (${reason})`);
+            console.log('⚠️ chrome.storage.local: 拡張機能コンテキストが無効です -', reason);
+        }
+    } catch (error) {
+        saveResults.push(`chrome.storage.local: 失敗 - ${error.message}`);
+        console.error('❌ chrome.storage.local保存失敗:', error);
+        
+        // Extension context invalidated の場合は特別な処理
+        if (error.message.includes('Extension context invalidated')) {
+            console.log('🔄 拡張機能コンテキストが無効化されました。ページリロードを推奨します。');
+            
+            // ユーザーに通知（1回だけ）
+            if (!window.extensionContextInvalidatedNotified) {
+                window.extensionContextInvalidatedNotified = true;
+                setTimeout(() => {
+                    if (confirm('ハイライト拡張機能のコンテキストが無効化されました。\nページをリロードしてハイライト機能を復旧しますか？')) {
+                        window.location.reload();
+                    }
+                }, 1000);
+            }
+        }
+    }
+    
+    // 方法3: Service Worker経由（最後に試行）
+    try {
+        const response = await sendMessageSafely({
+            action: 'saveToStorage',
+            key: key,
+            data: data
+        }, 1); // リトライ回数を1回に制限
+        
+        if (response?.success) {
+            saveResults.push('Service Worker: 成功');
+            console.log('✅ Service Worker保存成功');
+        } else {
+            saveResults.push('Service Worker: 応答なしまたは失敗');
+        }
+    } catch (error) {
+        saveResults.push(`Service Worker: 例外 - ${error.message}`);
+    }
+    
+    console.log('🔄 保存結果:', saveResults);
+    return saveResults;
+};
 
 // ハイライト情報を保存
-async function saveHighlightData() {
+const saveHighlightData = async () => {
     try {
         const key = getStorageKey();
+        
+        // キーの有効性をチェック
+        if (!key) {
+            console.error('ハイライトデータ保存エラー: ストレージキーが無効です', { currentDomain });
+            return;
+        }
+        
         const data = {
             domain: currentDomain,
             url: window.location.href,
@@ -563,50 +718,168 @@ async function saveHighlightData() {
             lastUpdated: Date.now()
         };
         
-        const response = await sendMessageSafely({
-            action: 'saveToStorage',
-            key: key,
-            data: data
+        console.log('📝 ハイライトデータを保存中...', { key, dataLength: highlightData.length });
+        
+        // 新しい確実な保存方法を使用
+        const results = await saveHighlightDataReliable(data, key);
+        
+        // 成功した保存方法があるかチェック
+        const hasSuccess = results.some(result => result.includes('成功'));
+        
+        if (hasSuccess) {
+            console.log('✅ ハイライトデータ保存完了:', results);
+        } else {
+            console.error('❌ 全ての保存方法が失敗しました:', results);
+        }
+        
+    } catch (error) {
+        console.error('ハイライトデータ保存エラー (例外):', {
+            error: error.message,
+            stack: error.stack,
+            currentDomain: currentDomain,
+            highlightDataLength: highlightData?.length
         });
         
-        if (response && response.success) {
-            console.log('ハイライトデータを保存しました:', key, data);
+        // 例外時の緊急保存
+        try {
+            const key = getStorageKey();
+            const data = {
+                domain: currentDomain,
+                url: window.location.href,
+                highlights: highlightData,
+                lastUpdated: Date.now()
+            };
+            localStorage.setItem(key, JSON.stringify(data));
+            console.log('🚨 緊急保存: localStorageに保存しました');
+        } catch (emergencyError) {
+            console.error('🚨 緊急保存も失敗:', emergencyError);
+        }
+    }
+};
+
+// 新しい読み込み関数: 確実にデータを取得
+const loadHighlightDataReliable = async (key) => {
+    let loadedData = null;
+    const loadResults = [];
+    
+    // 方法1: localStorage（最優先 - コンテキスト無効化の影響を受けない）
+    try {
+        const localData = localStorage.getItem(key);
+        if (localData) {
+            loadedData = JSON.parse(localData);
+            loadResults.push('localStorage: 成功');
+            console.log('✅ localStorage読み込み成功（最優先）');
         } else {
-            console.error('ハイライトデータ保存エラー:', response?.error);
+            loadResults.push('localStorage: データなし');
         }
     } catch (error) {
-        console.error('ハイライトデータ保存エラー:', error);
+        loadResults.push(`localStorage: 失敗 - ${error.message}`);
+        console.error('❌ localStorage読み込み失敗:', error);
     }
-}
+    
+    // 方法2: chrome.storage.local 直接アクセス（コンテキスト確認付き）
+    try {
+        // 拡張機能のコンテキストが有効かチェック（chrome.storageの存在も確認）
+        if (chrome?.runtime?.id && chrome?.storage?.local && checkExtensionContext()) {
+            const result = await chrome.storage.local.get([key]);
+            if (result[key]) {
+                loadedData = result[key];
+                loadResults.push('chrome.storage.local: 成功');
+                console.log('✅ chrome.storage.local読み込み成功');
+            } else {
+                loadResults.push('chrome.storage.local: データなし');
+            }
+        } else {
+            const reason = !chrome ? 'chromeオブジェクトなし' : 
+                          !chrome.runtime ? 'chrome.runtimeなし' :
+                          !chrome.runtime.id ? 'chrome.runtime.idなし' :
+                          !chrome.storage ? 'chrome.storageなし' :
+                          !chrome.storage.local ? 'chrome.storage.localなし' :
+                          'checkExtensionContext失敗';
+            loadResults.push(`chrome.storage.local: コンテキスト無効 (${reason})`);
+            console.log('⚠️ chrome.storage.local: 拡張機能コンテキストが無効です -', reason);
+        }
+    } catch (error) {
+        loadResults.push(`chrome.storage.local: 失敗 - ${error.message}`);
+        console.error('❌ chrome.storage.local読み込み失敗:', error);
+        
+        // Extension context invalidated の場合は特別な処理
+        if (error.message.includes('Extension context invalidated')) {
+            console.log('🔄 拡張機能コンテキストが無効化されました。ページリロードを推奨します。');
+        }
+    }
+    
+    // 方法3: Service Worker経由（最後に試行）
+    if (!loadedData) {
+        try {
+            const response = await sendMessageSafely({
+                action: 'loadFromStorage',
+                key: key
+            }, 1); // リトライ回数を1回に制限
+            
+            if (response?.success && response.data) {
+                loadedData = response.data;
+                loadResults.push('Service Worker: 成功');
+                console.log('✅ Service Worker読み込み成功');
+            } else {
+                loadResults.push('Service Worker: データなしまたは失敗');
+            }
+        } catch (error) {
+            loadResults.push(`Service Worker: 例外 - ${error.message}`);
+        }
+    }
+    
+    console.log('🔄 読み込み結果:', loadResults);
+    return loadedData;
+};
 
 // ハイライト情報を読み込み
-async function loadHighlightData() {
+const loadHighlightData = async () => {
     try {
         const key = getStorageKey();
-        const response = await sendMessageSafely({
-            action: 'loadFromStorage',
-            key: key
-        });
+        console.log('📖 ハイライトデータを読み込み中...', key);
         
-        if (response && response.success && response.data) {
-            const data = response.data;
-            highlightData = data.highlights || [];
-            console.log('ハイライトデータを読み込みました:', key, data);
+        // 新しい確実な読み込み方法を使用
+        const loadedData = await loadHighlightDataReliable(key);
+        
+        if (loadedData) {
+            highlightData = loadedData.highlights || [];
+            console.log('✅ ハイライトデータ読み込み完了:', highlightData.length, '件');
             
             // 保存されたハイライトを復元
             restoreHighlights();
         } else {
+            console.log('ℹ️ 保存されたハイライトデータがありません:', key);
             highlightData = [];
-            console.log('保存されたハイライトデータはありません');
         }
+        
     } catch (error) {
-        console.error('ハイライトデータ読み込みエラー:', error);
-        highlightData = [];
+        console.error('ハイライトデータ読み込みエラー (例外):', {
+            error: error.message,
+            stack: error.stack
+        });
+        
+        // 例外時の緊急読み込み
+        try {
+            const key = getStorageKey();
+            const localData = localStorage.getItem(key);
+            if (localData) {
+                const parsedData = JSON.parse(localData);
+                highlightData = parsedData.highlights || [];
+                console.log('🚨 緊急読み込み: localStorageから', highlightData.length, '件');
+                restoreHighlights();
+            } else {
+                highlightData = [];
+            }
+        } catch (emergencyError) {
+            console.error('🚨 緊急読み込みも失敗:', emergencyError);
+            highlightData = [];
+        }
     }
-}
+};
 
 // ハイライトを復元
-function restoreHighlights() {
+const restoreHighlights = () => {
     highlightData.forEach(highlightInfo => {
         try {
             const element = getElementByXPath(highlightInfo.xpath);
@@ -649,10 +922,10 @@ function restoreHighlights() {
             console.error('ハイライト復元エラー:', error);
         }
     });
-}
+};
 
 // 要素内のテキストノードを取得
-function getTextNodes(element) {
+const getTextNodes = (element) => {
     const textNodes = [];
     const walker = document.createTreeWalker(
         element,
@@ -669,10 +942,10 @@ function getTextNodes(element) {
     }
     
     return textNodes;
-}
+};
 
 // 範囲にハイライトを適用（復元用）
-function applyHighlightToRange(range, color, id) {
+const applyHighlightToRange = (range, color, id) => {
     try {
         const highlightSpan = document.createElement('span');
         highlightSpan.className = 'text-highlighter-highlight';
@@ -685,10 +958,10 @@ function applyHighlightToRange(range, color, id) {
     } catch (error) {
         console.error('ハイライト復元適用エラー:', error);
     }
-}
+};
 
 // ハイライト情報を追加
-function addHighlightInfo(element, text, color, id) {
+const addHighlightInfo = (element, text, color, id) => {
     const xpath = getXPath(element);
     if (xpath) {
         const highlightInfo = {
@@ -708,10 +981,10 @@ function addHighlightInfo(element, text, color, id) {
         // データを保存
         saveHighlightData();
     }
-}
+};
 
 // ハイライト情報を削除
-function removeHighlightInfo(id) {
+const removeHighlightInfo = (id) => {
     const originalLength = highlightData.length;
     highlightData = highlightData.filter(item => item.id !== id);
     
@@ -719,10 +992,10 @@ function removeHighlightInfo(id) {
         saveHighlightData();
         console.log('ハイライト情報を削除しました:', id);
     }
-}
+};
 
 // ページ読み込み完了時の処理
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     console.log('Text Highlighter: DOMコンテンツ読み込み完了');
     
     // 拡張機能のコンテキストをチェック
@@ -735,11 +1008,17 @@ document.addEventListener('DOMContentLoaded', function() {
     currentDomain = getCurrentDomain();
     console.log('現在のドメイン:', currentDomain);
     
+    // ドメインが取得できない場合のエラーハンドリング
+    if (!currentDomain) {
+        console.error('ドメインの取得に失敗しました:', window.location);
+        currentDomain = 'unknown_domain';
+    }
+    
     // 保存されたハイライトを読み込み
     loadHighlightData();
 });
 
 // ページ離脱時にデータを保存
-window.addEventListener('beforeunload', function() {
+window.addEventListener('beforeunload', () => {
     saveHighlightData();
 });
