@@ -97,13 +97,6 @@ const createContextMenus = () => {
             documentUrlPatterns: ["<all_urls>"]
         });
         
-        // ハイライト削除メニューを作成
-        chrome.contextMenus.create({
-            id: "removeHighlight",
-            title: "ハイライトを削除",
-            contexts: ["selection"],
-            documentUrlPatterns: ["<all_urls>"]
-        });
         
         console.log('右クリックメニューを作成しました');
     });
@@ -121,12 +114,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
                 selectedText: info.selectionText,
                 color: color
             });
-        });
-    } else if (info.menuItemId === "removeHighlight") {
-        // コンテンツスクリプトにハイライト削除を指示
-        chrome.tabs.sendMessage(tab.id, {
-            action: 'removeHighlight',
-            selectedText: info.selectionText
         });
     }
 });

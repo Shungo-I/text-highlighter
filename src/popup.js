@@ -87,6 +87,7 @@ function setupEventListeners() {
         }
         showCustomColorDialog();
     });
+    
 }
 
 // 色を選択する関数
@@ -404,6 +405,7 @@ async function removeCustomColor(index) {
         showStatus('カスタム色の削除に失敗しました', 'error');
     }
 }
+
 
 // カスタム色を保存
 async function saveCustomColors() {

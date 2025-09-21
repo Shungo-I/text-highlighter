@@ -435,6 +435,7 @@ const findHighlightElement = (element) => {
     return null;
 };
 
+
 // 右クリック時の処理
 document.addEventListener('contextmenu', (event) => {
     // 現在の選択情報をコンテキストメニュー用に保存
@@ -444,21 +445,6 @@ document.addEventListener('contextmenu', (event) => {
         contextMenuSelection.range = selection.getRangeAt(0).cloneRange();
         contextMenuSelection.timestamp = Date.now();
         console.log('コンテキストメニュー用選択情報を保存:', contextMenuSelection.text);
-    }
-    
-    const highlightElement = findHighlightElement(event.target);
-    
-    if (highlightElement) {
-        console.log('ハイライト要素で右クリック検出');
-        // 削除対象として視覚的にマーク
-        highlightElement.classList.add('deletion-target');
-        
-        // 2秒後にマークを除去
-        setTimeout(() => {
-            if (highlightElement.parentNode) {
-                highlightElement.classList.remove('deletion-target');
-            }
-        }, 2000);
     }
 });
 
@@ -521,50 +507,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             text: selectedText,
             hasSelection: selectedText.length > 0
         });
-    } else if (request.action === 'removeHighlight') {
-        // 現在選択されている範囲内のハイライトを削除
-        const selection = window.getSelection();
-        let removed = false;
-        
-        if (selection.rangeCount > 0 && !selection.isCollapsed) {
-            const range = selection.getRangeAt(0);
-            const container = range.commonAncestorContainer;
-            
-            // 選択範囲内のハイライト要素を探す
-            let highlights = [];
-            
-            if (container.nodeType === Node.ELEMENT_NODE) {
-                highlights = container.querySelectorAll('.text-highlighter-highlight');
-            } else if (container.parentElement) {
-                highlights = container.parentElement.querySelectorAll('.text-highlighter-highlight');
-            }
-            
-            // 選択範囲と重複するハイライトを削除
-            highlights.forEach(highlight => {
-                const highlightRange = getRangeFromElement(highlight);
-                if (rangesOverlap(range, highlightRange)) {
-                    removeHighlight(highlight);
-                    removed = true;
-                }
-            });
-        } else {
-            // 選択がない場合、右クリック位置の要素を確認
-            const elements = document.elementsFromPoint(
-                event.clientX || 0, 
-                event.clientY || 0
-            );
-            
-            for (let element of elements) {
-                const highlightElement = findHighlightElement(element);
-                if (highlightElement) {
-                    removeHighlight(highlightElement);
-                    removed = true;
-                    break;
-                }
-            }
-        }
-        
-        sendResponse({success: removed});
     }
     
     return true; // 非同期レスポンスを示す
@@ -993,6 +935,23 @@ const removeHighlightInfo = (id) => {
         console.log('ハイライト情報を削除しました:', id);
     }
 };
+
+
+// ハイライト要素のダブルクリック処理（削除）
+document.addEventListener('dblclick', (event) => {
+    const highlightElement = findHighlightElement(event.target);
+    if (highlightElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        // 確認なしで即座に削除
+        const success = removeHighlight(highlightElement);
+        if (success) {
+            console.log('ダブルクリックでハイライトを削除しました');
+        }
+    }
+});
+
 
 // ページ読み込み完了時の処理
 document.addEventListener('DOMContentLoaded', () => {
